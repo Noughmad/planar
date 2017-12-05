@@ -46,9 +46,11 @@
 
 mod oned;
 mod twod;
+mod transform;
 
 pub use oned::*;
 pub use twod::*;
+pub use transform::*;
 
 #[cfg(test)]
 mod tests {

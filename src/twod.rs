@@ -1,17 +1,16 @@
-use std::marker::PhantomData;
 use std::ops::{Add, Sub, Mul, Div, Neg, AddAssign, SubAssign, MulAssign, DivAssign};
 use std::fmt;
 
 use oned::*;
 
 pub struct Size<T, Unit> {
-    width: Width<T, Unit>,
-    height: Height<T, Unit>,
+    pub width: Width<T, Unit>,
+    pub height: Height<T, Unit>,
 }
 
 pub struct Point<T, Unit> {
-    x: PosX<T, Unit>,
-    y: PosY<T, Unit>,
+    pub x: PosX<T, Unit>,
+    pub y: PosY<T, Unit>,
 }
 
 macro_rules! impl_twod {
@@ -177,8 +176,8 @@ macro_rules! impl_twod_add {
 impl_twod_add!(Size, Point);
 
 pub struct Rect<T, Unit> {
-    origin: Point<T, Unit>,
-    size: Size<T, Unit>,
+    pub origin: Point<T, Unit>,
+    pub size: Size<T, Unit>,
 }
 
 impl<T, Unit> Rect<T, Unit> {
@@ -194,9 +193,14 @@ impl<T, Unit> Rect<T, Unit> {
         let size = opposite - origin.clone();
         Self { size, origin }
     }
-}
 
-pub struct Transform<T, UnitFrom, UnitTo>([T; 6], PhantomData<UnitFrom>, PhantomData<UnitTo>);
+    pub fn corner<W>(&self) -> Point<W, Unit>
+    where
+        T: Clone + Add<T, Output = W>,
+    {
+        self.origin.clone() + self.size.clone()
+    }
+}
 
 #[cfg(test)]
 mod tests {

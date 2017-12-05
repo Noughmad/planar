@@ -1,0 +1,6 @@
+[package]
+name = "planar"
+version = "0.1.0"
+authors = ["Miha Čančula <miha@bitfusion.io>"]
+
+[dependencies]

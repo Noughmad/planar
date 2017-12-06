@@ -1,7 +1,7 @@
 [package]
 name = "planar"
 description = "Strongly typed planar geometry"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Miha Čančula <miha@noughmad.eu>"]
 repository = "https://github.com/Noughmad/planar"
 keywords = ["geometry"]

@@ -124,7 +124,18 @@ impl<T: Clone + Mul<V, Output = W>, V: Clone, UnitFrom, W, UnitTo> AxisAlignedTr
     }
 }
 
-pub struct MatrixTransform<T, UnitFrom, UnitTo>([T; 6], PhantomData<UnitFrom>, PhantomData<UnitTo>);
+pub struct MatrixTransform<T, UnitFrom, UnitTo>([T; 6], PhantomData<(UnitFrom, UnitTo)>);
+
+impl<T, UnitFrom, UnitTo> MatrixTransform<T, UnitFrom, UnitTo> {
+    pub fn new(data: [T; 6]) -> Self
+    where T: Clone {
+        MatrixTransform(data.clone(), PhantomData{})
+    }
+
+    pub fn iter<'a>(&'a self) -> ::std::slice::Iter<'a, T> {
+        self.0.iter()
+    }
+}
 
 impl<T, UnitFrom, UnitTo> Transform<T, UnitFrom>
     for MatrixTransform<T, UnitFrom, UnitTo>

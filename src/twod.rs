@@ -86,9 +86,79 @@ macro_rules! impl_twod {
     }
 }
 
+macro_rules! impl_twod_add_width_height {
+    ($s:ident, $x:ident, $y:ident) => {
+        impl<T: Add<V, Output=T>, V, Unit> Add<Width<V, Unit>> for $s<T, Unit> {
+            type Output = Self;
+            fn add(self, other: Width<V, Unit>) -> Self::Output {
+                $s {
+                    $x: self.$x + other,
+                    $y: self.$y,
+                }
+            }
+        }
+
+        impl<T: AddAssign<V>, V, Unit> AddAssign<Width<V, Unit>> for $s<T, Unit> {
+            fn add_assign(&mut self, other: Width<V, Unit>) {
+                self.$x += other;
+            }
+        }
+
+        impl<T: Add<V, Output=T>, V, Unit> Add<Height<V, Unit>> for $s<T, Unit> {
+            type Output = Self;
+            fn add(self, other: Height<V, Unit>) -> Self::Output {
+                $s {
+                    $x: self.$x,
+                    $y: self.$y + other,
+                }
+            }
+        }
+
+        impl<T: AddAssign<V>, V, Unit> AddAssign<Height<V, Unit>> for $s<T, Unit> {
+            fn add_assign(&mut self, other: Height<V, Unit>) {
+                self.$y += other;
+            }
+        }
+
+        impl<T: Sub<V, Output=T>, V, Unit> Sub<Width<V, Unit>> for $s<T, Unit> {
+            type Output = Self;
+            fn sub(self, other: Width<V, Unit>) -> Self::Output {
+                $s {
+                    $x: self.$x - other,
+                    $y: self.$y,
+                }
+            }
+        }
+
+        impl<T: SubAssign<V>, V, Unit> SubAssign<Width<V, Unit>> for $s<T, Unit> {
+            fn sub_assign(&mut self, other: Width<V, Unit>) {
+                self.$x -= other;
+            }
+        }
+
+        impl<T: Sub<V, Output=T>, V, Unit> Sub<Height<V, Unit>> for $s<T, Unit> {
+            type Output = Self;
+            fn sub(self, other: Height<V, Unit>) -> Self::Output {
+                $s {
+                    $x: self.$x,
+                    $y: self.$y - other,
+                }
+            }
+        }
+
+        impl<T: SubAssign<V>, V, Unit> SubAssign<Height<V, Unit>> for $s<T, Unit> {
+            fn sub_assign(&mut self, other: Height<V, Unit>) {
+                self.$y -= other;
+            }
+        }
+    }
+}
+
 impl_twod!(Size, width, height);
 impl_twod!(Point, x, y);
 
+impl_twod_add_width_height!(Size, width, height);
+impl_twod_add_width_height!(Point, x, y);
 
 macro_rules! impl_twod_add {
     ($length: ident, $pos: ident) => {

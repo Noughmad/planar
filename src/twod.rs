@@ -272,6 +272,31 @@ impl<T, Unit> Rect<T, Unit> {
     }
 }
 
+impl<T: Copy, Unit> Copy for Rect<T, Unit> {}
+
+impl<T: Clone, Unit> Clone for Rect<T, Unit> {
+    fn clone(&self) -> Self {
+        Rect {
+            origin: self.origin.clone(),
+            size: self.size.clone(),
+        }
+    }
+}
+
+impl<T: PartialEq, Unit> PartialEq for Rect<T, Unit> {
+    fn eq(&self, other: &Self) -> bool {
+        self.origin == other.origin && self.size == other.size
+    }
+}
+
+impl<T: Eq, Unit> Eq for Rect<T, Unit> {}
+
+impl<T: fmt::Debug, Unit> fmt::Debug for Rect<T, Unit> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Rect {{ origin = {:?}, size = {:?} }}", self.origin, self.size)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     pub use super::*;

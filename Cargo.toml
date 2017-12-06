@@ -7,4 +7,7 @@ repository = "https://github.com/Noughmad/planar"
 keywords = ["geometry"]
 license = "MIT / Apache-2.0"
 
+[badges]
+travis-ci = { repository = "Noughmad/planar", branch = "master" }
+
 [dependencies]

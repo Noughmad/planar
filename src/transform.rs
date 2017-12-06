@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Sub, Mul, Div};
 
 use oned::*;
 use twod::*;
@@ -44,8 +44,7 @@ pub trait Transform<T, UnitFrom> {
 }
 
 impl<T, UnitFrom, W, UnitTo> Transform<T, UnitFrom>
-    for AxisAlignedTransform<T, UnitFrom, OutT=W, OutUnit=UnitTo> {
-
+    for AxisAlignedTransform<T, UnitFrom, OutT = W, OutUnit = UnitTo> {
     type OutT = W;
     type OutUnit = UnitTo;
 
@@ -61,7 +60,6 @@ pub struct IdentityTransform<T, UnitFrom, W, UnitTo>(PhantomData<(T, UnitFrom, W
 
 impl<T: Into<W>, UnitFrom, W, UnitTo> AxisAlignedTransform<T, UnitFrom>
     for IdentityTransform<T, UnitFrom, W, UnitTo> {
-
     type OutT = W;
     type OutUnit = UnitTo;
 
@@ -82,9 +80,7 @@ impl<T: Into<W>, UnitFrom, W, UnitTo> AxisAlignedTransform<T, UnitFrom>
 
 pub struct Translation<T, Unit>(Size<T, Unit>);
 
-impl<T: Clone + Add<T, Output = T>, Unit> AxisAlignedTransform<T, Unit>
-    for Translation<T, Unit> {
-
+impl<T: Clone + Add<T, Output = T>, Unit> AxisAlignedTransform<T, Unit> for Translation<T, Unit> {
     type OutT = T;
     type OutUnit = Unit;
 
@@ -108,14 +104,8 @@ pub struct ScaleFactor<T: Mul<V, Output = W>, V: Clone, W, UnitFrom, UnitTo>(
     PhantomData<(T, UnitFrom, W, UnitTo)>
 );
 
-impl<
-    T: Clone + Mul<V, Output = W>,
-    V: Clone,
-    UnitFrom,
-    W,
-    UnitTo,
-> AxisAlignedTransform<T, UnitFrom> for ScaleFactor<T, V, W, UnitFrom, UnitTo> {
-
+impl<T: Clone + Mul<V, Output = W>, V: Clone, UnitFrom, W, UnitTo> AxisAlignedTransform<T, UnitFrom>
+    for ScaleFactor<T, V, W, UnitFrom, UnitTo> {
     type OutT = W;
     type OutUnit = UnitTo;
 
@@ -156,6 +146,75 @@ where
     }
 }
 
+pub struct AxisAlignedMatrixTransform<T, V, W, Y, Z, UnitFrom, UnitTo>(
+    V,
+    V,
+    Y,
+    Y,
+    PhantomData<(UnitFrom, UnitTo, T, W, Z)>
+);
+
+impl<T, V, W, Y, Z, UnitFrom, UnitTo> AxisAlignedTransform<T, UnitFrom>
+    for AxisAlignedMatrixTransform<T, V, W, Y, Z, UnitFrom, UnitTo>
+where
+    T: Mul<V, Output = W>,
+    V: Clone,
+    W: Add<Y, Output = Z> + Into<Z>,
+    Y: Clone,
+{
+    type OutT = Z;
+    type OutUnit = UnitTo;
+
+    fn transform_position_x(&self, x: PosX<T, UnitFrom>) -> PosX<Z, UnitTo> {
+        PosX::new(x.into_inner() * self.0.clone() + self.2.clone())
+    }
+    fn transform_position_y(&self, y: PosY<T, UnitFrom>) -> PosY<Z, UnitTo> {
+        PosY::new(y.into_inner() * self.1.clone() + self.3.clone())
+    }
+
+    fn transform_width(&self, w: Width<T, UnitFrom>) -> Width<Z, UnitTo> {
+        Width::new((w.into_inner() * self.0.clone()).into())
+    }
+    fn transform_height(&self, h: Height<T, UnitFrom>) -> Height<Z, UnitTo> {
+        Height::new((h.into_inner() * self.1.clone()).into())
+    }
+
+    fn transform_point(&self, p: Point<T, UnitFrom>) -> Point<Z, UnitTo> {
+        Point {
+            x: PosX::new(p.x.into_inner() * self.0.clone() + self.2.clone()),
+            y: PosY::new(p.y.into_inner() * self.1.clone() + self.3.clone()),
+        }
+    }
+
+    fn transform_size(&self, s: Size<T, UnitFrom>) -> Size<Self::OutT, Self::OutUnit> {
+        Size {
+            width: Width::new((s.width.into_inner() * self.0.clone()).into()),
+            height: Height::new((s.height.into_inner() * self.1.clone()).into()),
+        }
+    }
+}
+
+impl<T, V, W, Y, Z, UnitFrom, UnitTo> AxisAlignedMatrixTransform<T, V, W, Y, Z, UnitFrom, UnitTo> {
+    pub fn new(scale_x: V, scale_y: V, translate_x: Y, translate_y: Y) -> Self {
+        AxisAlignedMatrixTransform(scale_x, scale_y, translate_x, translate_y, PhantomData {})
+    }
+
+    pub fn from_rects(from: Rect<T, UnitFrom>, to: Rect<Z, UnitTo>) -> Self
+    where
+        Z: Div<T, Output = V> + Sub<W, Output = Y>,
+        V: Clone,
+        T: Mul<V, Output = W>,
+    {
+        let scale_x = to.size.width.into_inner() / from.size.width.into_inner();
+        let scale_y = to.size.height.into_inner() / from.size.height.into_inner();
+
+        let translate_x = to.origin.x.into_inner() - from.origin.x.into_inner() * scale_x.clone();
+        let translate_y = to.origin.y.into_inner() - from.origin.y.into_inner() * scale_y.clone();
+
+        AxisAlignedMatrixTransform::new(scale_x, scale_y, translate_x, translate_y)
+    }
+}
+
 macro_rules! impl_mul_for_transform {
     ($mac:ident) => {
         $mac!(PosX, transform_position_x);
@@ -172,7 +231,8 @@ macro_rules! impl_mul_for_transform {
 
 macro_rules! impl_scale_factor_mul {
     ($s:ident, $m:ident) => {
-        impl<'a, T: Clone + Mul<V, Output = W>, V: Clone, W, UnitFrom, UnitTo> Mul<$s<T, UnitFrom>> for &'a ScaleFactor<T, V, W, UnitFrom, UnitTo> {
+        impl<'a, T: Clone + Mul<V, Output = W>, V: Clone, W, UnitFrom, UnitTo> Mul<$s<T, UnitFrom>>
+            for &'a ScaleFactor<T, V, W, UnitFrom, UnitTo> {
             type Output = $s<W, UnitTo>;
             fn mul(self, p: $s<T, UnitFrom>) -> Self::Output {
                 self.$m(p)
@@ -185,7 +245,8 @@ impl_mul_for_transform!(impl_scale_factor_mul);
 
 macro_rules! impl_identity_mul {
     ($s:ident, $m:ident) => {
-        impl<T: Into<W>, UnitFrom, W, UnitTo> Mul<$s<T, UnitFrom>> for IdentityTransform<T, UnitFrom, W, UnitTo> {
+        impl<T: Into<W>, UnitFrom, W, UnitTo> Mul<$s<T, UnitFrom>>
+        for IdentityTransform<T, UnitFrom, W, UnitTo> {
             type Output = $s<W, UnitTo>;
             fn mul(self, p: $s<T, UnitFrom>) -> Self::Output {
                 self.$m(p)
@@ -210,6 +271,25 @@ macro_rules! impl_translation_mul {
 
 impl_mul_for_transform!(impl_translation_mul);
 
+macro_rules! impl_axis_aligned_matrix_mul {
+    ($s:ident, $m:ident) => {
+    impl<T, V, W, Y, Z, UnitFrom, UnitTo> Mul<$s<T, UnitFrom>>
+    for AxisAlignedMatrixTransform<T, V, W, Y, Z, UnitFrom, UnitTo>
+where
+    T: Mul<V, Output=W>,
+    V: Clone,
+    W: Add<Y, Output=Z> + Into<Z>,
+    Y: Clone,
+    {
+            type Output = $s<Z, UnitTo>;
+            fn mul(self, p: $s<T, UnitFrom>) -> Self::Output {
+                self.$m(p)
+            }
+        }
+    }
+}
+
+impl_mul_for_transform!(impl_axis_aligned_matrix_mul);
 
 macro_rules! impl_matrix_mul {
     ($s:ident, $m:ident) => {
@@ -238,7 +318,7 @@ mod tests {
     #[test]
     fn scale_factor() {
         let w: Width<f64, Point> = Width::new(7.0);
-        let f: ScaleFactor<f64, f64, f64, Point, Pixel> = ScaleFactor(12.0, PhantomData{});
+        let f: ScaleFactor<f64, f64, f64, Point, Pixel> = ScaleFactor(12.0, PhantomData {});
         let w2: Width<f64, Pixel> = Width::new(84.0);
 
         assert_eq!(f.transform_width(w), w2);
@@ -247,7 +327,7 @@ mod tests {
     #[test]
     fn scale_factor_inferred_types() {
         let w: Width<_, Point> = Width::new(7.0);
-        let f = ScaleFactor(12.0, PhantomData{});
+        let f = ScaleFactor(12.0, PhantomData {});
         let w2: Width<_, Pixel> = Width::new(84.0);
 
         assert_eq!(f.transform_width(w), w2);
@@ -256,7 +336,7 @@ mod tests {
     #[test]
     fn scale_factor_mul() {
         let w: Width<_, Point> = Width::new(7.0);
-        let f = ScaleFactor(12.0, PhantomData{});
+        let f = ScaleFactor(12.0, PhantomData {});
         let w2: Width<_, Pixel> = Width::new(84.0);
 
         assert_eq!(&f * w, w2);
